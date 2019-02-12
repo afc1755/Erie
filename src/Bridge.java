@@ -13,6 +13,7 @@ public class Bridge {
     private ArrayList<Car> northWaiting;
     private ArrayList<Car> nCrossing;
     private ArrayList<Car> sCrossing;
+    private ArrayList<Car> realOrder;
     private BridgeDirection bd;
 
     public Bridge(int numCars){
@@ -21,6 +22,7 @@ public class Bridge {
         northWaiting = new ArrayList<>();
         nCrossing = new ArrayList<>();
         sCrossing = new ArrayList<>();
+        realOrder = new ArrayList<>();
         for(int i  = 0; i < numCars; i++){
             Car currCar = new Car(i + 1, this);
             carList.add(currCar);
@@ -58,41 +60,63 @@ public class Bridge {
                 crossString += c.getCarId() + " ";
             }
         }
-        System.out.printf("S:%-29s %-15s %s%n", southString, crossString, northString);
+        System.out.printf("S:%-29s %-15s %s :N%n", southString, crossString, northString);
     }
 
     public synchronized void crossToNorth(int id){
         printState();
         nCrossing.remove(carList.get(id -1));
-        //carList.notifyAll();
+        if (!realOrder.isEmpty())
+            realOrder.get(0).notify();
     }
 
 
     public synchronized void crossToSouth(int id){
         printState();
         sCrossing.remove(carList.get(id -1));
-        //northWaiting.notifyAll();
+        if (!realOrder.isEmpty())
+            realOrder.get(0).notify();
     }
 
     public synchronized void reachedTheNorth(int id){
         printState();
         Car currCar = carList.get(id -1);
-        northWaiting.add(currCar);
-        if(sCrossing.isEmpty() && (nCrossing.isEmpty()) || (nCrossing.size() < 3 && southWaiting.isEmpty())){
+        if(!northWaiting.contains(currCar))
+            northWaiting.add(currCar);
+            realOrder.add(currCar);
+        if((sCrossing.isEmpty() && (nCrossing.isEmpty()) || (nCrossing.size() < 3 && southWaiting.isEmpty() && sCrossing.isEmpty()))){
             northWaiting.remove(currCar);
+            realOrder.remove(currCar);
             nCrossing.add(currCar);
-            currCar.crossBridge();
+        }else{
+            try{
+                synchronized (currCar){
+                    currCar.wait();
+                }
+            } catch(InterruptedException e){
+                e.printStackTrace();
+            }
         }
     }
 
     public synchronized void reachedTheSouth(int id){
         printState();
         Car currCar = carList.get(id - 1);
-        southWaiting.add(currCar);
-        if(nCrossing.isEmpty() && (sCrossing.isEmpty()) || (sCrossing.size() < 3 && northWaiting.isEmpty())){
+        if(!southWaiting.contains(currCar))
+            southWaiting.add(currCar);
+            realOrder.add(currCar);
+        if ((nCrossing.isEmpty() && (sCrossing.isEmpty()) || (sCrossing.size() < 3 && northWaiting.isEmpty() && nCrossing.isEmpty()))){
             southWaiting.remove(currCar);
+            realOrder.remove(currCar);
             sCrossing.add(currCar);
-            currCar.crossBridge();
+        }else{
+            try{
+                synchronized (currCar) {
+                    currCar.wait();
+                }
+            } catch(InterruptedException e){
+                e.printStackTrace();
+            }
         }
     }
     //main function that will run all the simulation parts, monitor the cars, etc.
@@ -100,16 +124,14 @@ public class Bridge {
         for(Car c: carList){
             c.start();
         }
-        while(true){
-            for(Car c: carList){
-                try{
-                    c.join(2000);
-                } catch(InterruptedException e){
-                    e.printStackTrace();
-                }
+        for(Car c: carList){
+            try{
+                c.join();
+            } catch(InterruptedException e){
+                e.printStackTrace();
             }
         }
-        //System.out.println("simulation finished.");
+        System.out.println("simulation finished.");
     }
 }
 

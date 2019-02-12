@@ -24,8 +24,9 @@ public class Car extends Thread{
         if(id % 2 == 1){
             myBridge.reachedTheSouth(id);
         }else{
-            myBridge.reachedTheNorth(id);
+           myBridge.reachedTheNorth(id);
         }
+        crossBridge();
     }
 
     public void crossBridge(){
@@ -33,7 +34,7 @@ public class Car extends Thread{
         if(id % 2 == 1) {
             myBridge.setBridgeDirection(BridgeDirection.SOUTH);
             try {
-                Thread.sleep(rand.nextInt(1000) + 500);
+                this.sleep(rand.nextInt(1000) + 500);
             } catch (InterruptedException e) {
                 System.out.println("oof");
             }
@@ -41,7 +42,7 @@ public class Car extends Thread{
         }else{
             myBridge.setBridgeDirection(BridgeDirection.NORTH);
             try {
-                Thread.sleep(rand.nextInt(1000) + 500);
+                this.sleep(rand.nextInt(1000) + 500);
             } catch (InterruptedException e) {
                 System.out.println("oof");
             }
