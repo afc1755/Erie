@@ -19,7 +19,7 @@ public class Car extends Thread{
         try{
             Thread.sleep(rand.nextInt(500));
         }catch(InterruptedException e){
-            System.out.println("oof");
+            e.printStackTrace();
         }
         if(id % 2 == 1){
             myBridge.reachedTheSouth(id);
@@ -32,19 +32,23 @@ public class Car extends Thread{
     public void crossBridge(){
         Random rand = new Random(31);
         if(id % 2 == 1) {
-            myBridge.setBridgeDirection(BridgeDirection.SOUTH);
+            synchronized (this) {
+                myBridge.setBridgeDirection(BridgeDirection.SOUTH);
+            }
             try {
                 this.sleep(rand.nextInt(1000) + 500);
             } catch (InterruptedException e) {
-                System.out.println("oof");
+                e.printStackTrace();
             }
             myBridge.crossToSouth(id);
         }else{
-            myBridge.setBridgeDirection(BridgeDirection.NORTH);
+            synchronized (this) {
+                myBridge.setBridgeDirection(BridgeDirection.NORTH);
+            }
             try {
                 this.sleep(rand.nextInt(1000) + 500);
             } catch (InterruptedException e) {
-                System.out.println("oof");
+                e.printStackTrace();
             }
             myBridge.crossToNorth(id);
         }

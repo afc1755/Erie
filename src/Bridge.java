@@ -31,11 +31,11 @@ public class Bridge {
         System.out.printf("%-29s %-15s %s%n", "South", "Bridge ==>", "North");
     }
 
-    public void setBridgeDirection(BridgeDirection bridgeDirection){
+    public synchronized void setBridgeDirection(BridgeDirection bridgeDirection){
         bd = bridgeDirection;
     }
 
-    private void printState(){
+    public void printState(){
         String southString = "[";
         String northString = "[";
         String crossString;
@@ -49,75 +49,77 @@ public class Bridge {
             southString = southString.substring(0, southString.length() - 1);
         northString += "]";
         southString += "]";
-        if(bd == BridgeDirection.NORTH){
+        if(!nCrossing.isEmpty()){
             crossString = "<== ";
             for(Car c: nCrossing){
                 crossString += c.getCarId() + " ";
             }
-        }else{
+        }else if(!sCrossing.isEmpty()){
             crossString = "==> ";
             for(Car c: sCrossing){
                 crossString += c.getCarId() + " ";
             }
+        }else if(bd == BridgeDirection.NORTH){
+            crossString = "<== ";
+        }else{
+            crossString = "==> ";
         }
         System.out.printf("S:%-29s %-15s %s :N%n", southString, crossString, northString);
     }
 
     public synchronized void crossToNorth(int id){
-        printState();
         nCrossing.remove(carList.get(id -1));
         if (!realOrder.isEmpty())
-            realOrder.get(0).notify();
+            notifyAll();
+        printState();
     }
 
 
     public synchronized void crossToSouth(int id){
-        printState();
         sCrossing.remove(carList.get(id -1));
         if (!realOrder.isEmpty())
-            realOrder.get(0).notify();
+            notifyAll();
+        printState();
     }
 
     public synchronized void reachedTheNorth(int id){
-        printState();
         Car currCar = carList.get(id -1);
         if(!northWaiting.contains(currCar))
             northWaiting.add(currCar);
             realOrder.add(currCar);
-        if((sCrossing.isEmpty() && (nCrossing.isEmpty()) || (nCrossing.size() < 3 && southWaiting.isEmpty() && sCrossing.isEmpty()))){
-            northWaiting.remove(currCar);
-            realOrder.remove(currCar);
-            nCrossing.add(currCar);
-        }else{
-            try{
-                synchronized (currCar){
-                    currCar.wait();
+        while(!(realOrder.get(0) == currCar && sCrossing.isEmpty() && (nCrossing.isEmpty()) || (nCrossing.size() < 3 && southWaiting.isEmpty() && sCrossing.isEmpty()))) {
+            try {
+                synchronized (this) {
+                    wait();
                 }
-            } catch(InterruptedException e){
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        northWaiting.remove(currCar);
+        realOrder.remove(currCar);
+        nCrossing.add(currCar);
+        printState();
     }
 
     public synchronized void reachedTheSouth(int id){
-        printState();
         Car currCar = carList.get(id - 1);
         if(!southWaiting.contains(currCar))
             southWaiting.add(currCar);
             realOrder.add(currCar);
-        if ((nCrossing.isEmpty() && (sCrossing.isEmpty()) || (sCrossing.size() < 3 && northWaiting.isEmpty() && nCrossing.isEmpty()))){
-            southWaiting.remove(currCar);
-            realOrder.remove(currCar);
-            sCrossing.add(currCar);
-        }else{
+        while(!(realOrder.get(0) == currCar && nCrossing.isEmpty() && (sCrossing.isEmpty()) || (sCrossing.size() < 3 && northWaiting.isEmpty() && nCrossing.isEmpty()))){
             try{
-                synchronized (currCar) {
-                    currCar.wait();
+                synchronized (this) {
+                    wait();
                 }
             } catch(InterruptedException e){
                 e.printStackTrace();
             }
         }
+        southWaiting.remove(currCar);
+        realOrder.remove(currCar);
+        sCrossing.add(currCar);
+        printState();
     }
     //main function that will run all the simulation parts, monitor the cars, etc.
     public void startRun(){
