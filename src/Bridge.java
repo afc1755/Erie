@@ -8,45 +8,48 @@ enum BridgeDirection{
 }
 
 public class Bridge {
-    private ArrayList<Car> carList;
-    private ArrayList<Car> southWaiting;
-    private ArrayList<Car> northWaiting;
+    private ArrayList<Car> initialCarList;
+    private ArrayList<Car> sWaiting;
+    private ArrayList<Car> nWaiting;
     private ArrayList<Car> nCrossing;
     private ArrayList<Car> sCrossing;
-    private ArrayList<Car> realOrder;
-    private BridgeDirection bd;
+    private ArrayList<Car> nRealOrder;
+    private ArrayList<Car> sRealOrder;
+    private BridgeDirection currentBridgeDirection;
+    private BridgeDirection lastCarCrossedDirection;
 
     public Bridge(int numCars){
-        carList = new ArrayList<>();
-        southWaiting = new ArrayList<>();
-        northWaiting = new ArrayList<>();
+        initialCarList = new ArrayList<>();
+        sWaiting = new ArrayList<>();
+        nWaiting = new ArrayList<>();
         nCrossing = new ArrayList<>();
         sCrossing = new ArrayList<>();
-        realOrder = new ArrayList<>();
+        nRealOrder = new ArrayList<>();
+        sRealOrder = new ArrayList<>();
         for(int i  = 0; i < numCars; i++){
             Car currCar = new Car(i + 1, this);
-            carList.add(currCar);
+            initialCarList.add(currCar);
             System.out.println("Creating Car Driver " + (i+1) + ".");
         }
-        System.out.printf("%-29s %-15s %s%n", "South", "Bridge ==>", "North");
+        System.out.printf("%-28s %-14s %s%n", "South", "Bridge ==>", "North");
     }
 
     public synchronized void setBridgeDirection(BridgeDirection bridgeDirection){
-        bd = bridgeDirection;
+        currentBridgeDirection = bridgeDirection;
     }
 
     public void printState(){
         String southString = "[";
         String northString = "[";
         String crossString;
-        for(Car c: northWaiting)
-            northString += c.getCarId() + ",";
-        for(Car c: southWaiting)
-            southString += c.getCarId() + ",";
+        for(Car c: nWaiting)
+            northString += c.getCarId() + ", ";
+        for(int i = sWaiting.size(); i > 0; i--)
+            southString += sWaiting.get(i - 1).getCarId() + ", ";
         if(northString.length() > 1)
-            northString = northString.substring(0, northString.length() - 1);
+            northString = northString.substring(0, northString.length() - 2);
         if(southString.length() > 1)
-            southString = southString.substring(0, southString.length() - 1);
+            southString = southString.substring(0, southString.length() - 2);
         northString += "]";
         southString += "]";
         if(!nCrossing.isEmpty()){
@@ -56,38 +59,25 @@ public class Bridge {
             }
         }else if(!sCrossing.isEmpty()){
             crossString = "==> ";
-            for(Car c: sCrossing){
-                crossString += c.getCarId() + " ";
+            for(int i = sCrossing.size(); i > 0; i--){
+                crossString += sCrossing.get(i - 1).getCarId() + " ";
             }
-        }else if(bd == BridgeDirection.NORTH){
+        }else if(currentBridgeDirection == BridgeDirection.NORTH){
             crossString = "<== ";
         }else{
             crossString = "==> ";
         }
-        System.out.printf("S:%-29s %-15s %s :N%n", southString, crossString, northString);
+        if(southString.length() > 23){
+            southString = southString.substring(southString.length() - 23);
+        }
+        if(northString.length() > 28){
+            northString = northString.substring(0,28);
+        }
+        System.out.printf("S: %-26s%-15s%s :N%n", southString, crossString, northString);
     }
-
-    public synchronized void crossToNorth(int id){
-        nCrossing.remove(carList.get(id -1));
-        if (!realOrder.isEmpty())
-            notifyAll();
-        printState();
-    }
-
-
+    
     public synchronized void crossToSouth(int id){
-        sCrossing.remove(carList.get(id -1));
-        if (!realOrder.isEmpty())
-            notifyAll();
-        printState();
-    }
-
-    public synchronized void reachedTheNorth(int id){
-        Car currCar = carList.get(id -1);
-        if(!northWaiting.contains(currCar))
-            northWaiting.add(currCar);
-            realOrder.add(currCar);
-        while(!(realOrder.get(0) == currCar && sCrossing.isEmpty() && (nCrossing.isEmpty()) || (nCrossing.size() < 3 && southWaiting.isEmpty() && sCrossing.isEmpty()))) {
+        while(nCrossing.get(0) != initialCarList.get(id -1)){
             try {
                 synchronized (this) {
                     wait();
@@ -96,18 +86,61 @@ public class Bridge {
                 e.printStackTrace();
             }
         }
-        northWaiting.remove(currCar);
-        realOrder.remove(currCar);
+        nCrossing.remove(initialCarList.get(id -1));
+        notifyAll();
+        lastCarCrossedDirection = BridgeDirection.NORTH;
+        printState();
+    }
+
+
+    public synchronized void crossToNorth(int id){
+        while(sCrossing.get(0) != initialCarList.get(id -1)){
+            try {
+                synchronized (this) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        sCrossing.remove(initialCarList.get(id -1));
+        notifyAll();
+        lastCarCrossedDirection = BridgeDirection.SOUTH;
+        printState();
+    }
+
+    public synchronized void reachedTheNorth(int id){
+        Car currCar = initialCarList.get(id -1);
+        if(!nWaiting.contains(currCar))
+            nWaiting.add(currCar);
+            nRealOrder.add(currCar);
+        while(!((nRealOrder.get(0) == currCar  &&
+                    (lastCarCrossedDirection == BridgeDirection.SOUTH || sWaiting.isEmpty()))
+                && sCrossing.isEmpty() &&
+                (nCrossing.isEmpty()) || (nCrossing.size() < 3 && sWaiting.isEmpty() && sCrossing.isEmpty()))) {
+            try {
+                synchronized (this) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        nWaiting.remove(currCar);
+        nRealOrder.remove(currCar);
         nCrossing.add(currCar);
         printState();
     }
 
     public synchronized void reachedTheSouth(int id){
-        Car currCar = carList.get(id - 1);
-        if(!southWaiting.contains(currCar))
-            southWaiting.add(currCar);
-            realOrder.add(currCar);
-        while(!(realOrder.get(0) == currCar && nCrossing.isEmpty() && (sCrossing.isEmpty()) || (sCrossing.size() < 3 && northWaiting.isEmpty() && nCrossing.isEmpty()))){
+        Car currCar = initialCarList.get(id - 1);
+        if(!sWaiting.contains(currCar))
+            sWaiting.add(currCar);
+            sRealOrder.add(currCar);
+        while(!((sRealOrder.get(0) == currCar  &&
+                    (lastCarCrossedDirection == BridgeDirection.NORTH || nWaiting.isEmpty()))
+                && nCrossing.isEmpty() &&
+                (sCrossing.isEmpty()) || (sCrossing.size() < 3 && nWaiting.isEmpty() && nCrossing.isEmpty()))){
             try{
                 synchronized (this) {
                     wait();
@@ -116,17 +149,17 @@ public class Bridge {
                 e.printStackTrace();
             }
         }
-        southWaiting.remove(currCar);
-        realOrder.remove(currCar);
+        sWaiting.remove(currCar);
+        sRealOrder.remove(currCar);
         sCrossing.add(currCar);
         printState();
     }
     //main function that will run all the simulation parts, monitor the cars, etc.
     public void startRun(){
-        for(Car c: carList){
+        for(Car c: initialCarList){
             c.start();
         }
-        for(Car c: carList){
+        for(Car c: initialCarList){
             try{
                 c.join();
             } catch(InterruptedException e){

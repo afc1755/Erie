@@ -40,7 +40,7 @@ public class Car extends Thread{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            myBridge.crossToSouth(id);
+            myBridge.crossToNorth(id);
         }else{
             synchronized (this) {
                 myBridge.setBridgeDirection(BridgeDirection.NORTH);
@@ -50,7 +50,7 @@ public class Car extends Thread{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            myBridge.crossToNorth(id);
+            myBridge.crossToSouth(id);
         }
     }
 
