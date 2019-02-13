@@ -20,9 +20,9 @@ public class Car extends Thread{
     private Bridge myBridge;
 
     /**
-     *
-     * @param carNum
-     * @param myBridge
+     * Creates a new car with the given id and bridge
+     * @param carNum unique id for the car
+     * @param myBridge brideg that will monitor this car
      */
     public Car(int carNum, Bridge myBridge){
         this.id = carNum;
