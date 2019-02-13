@@ -1,31 +1,55 @@
-//Monitor class
+/**
+ * @author Andrew Chabot
+ * @version 1.0
+ * Bridge.java
+ * Monitor class for COPADS project 1, also includes the BridgeDirection enum
+ * February 13, 2019
+ */
 
 import java.util.ArrayList;
-
+import java.util.Random;
+/**
+ * enum for directions of bridge, helps keep track of the last car crossed direction and
+ * the direction the bridge is currently facing.
+ * Can either be NORTH or SOUTH direction
+ */
 enum BridgeDirection{
     SOUTH,
     NORTH
 }
 
+/**
+ * Bridge class
+ */
 public class Bridge {
+    /**
+     * initialCarList: contains all cars, populated when cars are created
+     * nWaiting: list of cars waiting on the north side
+     * sWaiting: list of cars waiting on the south side
+     * nCrossing: list of cars currently crossing from the north side to south side
+     * sCrossing: list of cars currently crossing from the south side to north side
+     * lastCarCrossedDirection: direction that the last car crossed from: south or north
+     * rand: Random that will be passed to each class and seeded with 31
+     */
     private ArrayList<Car> initialCarList;
-    private ArrayList<Car> sWaiting;
     private ArrayList<Car> nWaiting;
+    private ArrayList<Car> sWaiting;
     private ArrayList<Car> nCrossing;
     private ArrayList<Car> sCrossing;
-    private ArrayList<Car> nRealOrder;
-    private ArrayList<Car> sRealOrder;
-    private BridgeDirection currentBridgeDirection;
     private BridgeDirection lastCarCrossedDirection;
+    private Random rand;
 
+    /**
+     * Creates a new bridge object with a given number of cars
+     * @param numCars number of cars/threads that the bridge will be managing
+     */
     public Bridge(int numCars){
         initialCarList = new ArrayList<>();
         sWaiting = new ArrayList<>();
         nWaiting = new ArrayList<>();
         nCrossing = new ArrayList<>();
         sCrossing = new ArrayList<>();
-        nRealOrder = new ArrayList<>();
-        sRealOrder = new ArrayList<>();
+        rand = new Random(31);
         for(int i  = 0; i < numCars; i++){
             Car currCar = new Car(i + 1, this);
             initialCarList.add(currCar);
@@ -34,11 +58,19 @@ public class Bridge {
         System.out.printf("%-28s %-14s %s%n", "South", "Bridge ==>", "North");
     }
 
-    public synchronized void setBridgeDirection(BridgeDirection bridgeDirection){
-        currentBridgeDirection = bridgeDirection;
+    /**
+     * gets the random, useful for individual cars to have randomization
+     * @return the rand field of the Bridge object
+     */
+    public synchronized Random getRand(){
+        return rand;
     }
 
-    public void printState(){
+    /**
+     * Function to print the current state of the bridge, following the program output
+     * specifications
+     */
+    private void printState(){
         String southString = "[";
         String northString = "[";
         String crossString;
@@ -62,7 +94,7 @@ public class Bridge {
             for(int i = sCrossing.size(); i > 0; i--){
                 crossString += sCrossing.get(i - 1).getCarId() + " ";
             }
-        }else if(currentBridgeDirection == BridgeDirection.NORTH){
+        }else if(lastCarCrossedDirection == BridgeDirection.NORTH){
             crossString = "<== ";
         }else{
             crossString = "==> ";
@@ -76,23 +108,12 @@ public class Bridge {
         System.out.printf("S: %-26s%-15s%s :N%n", southString, crossString, northString);
     }
 
-    public synchronized void crossToSouth(int id){
-        while(nCrossing.get(0) != initialCarList.get(id -1)){
-            try {
-                synchronized (this) {
-                    wait();
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        nCrossing.remove(initialCarList.get(id -1));
-        notifyAll();
-        lastCarCrossedDirection = BridgeDirection.NORTH;
-        printState();
-    }
-
-
+    /**
+     * Function called by a Car once it has crossed from south to north
+     * Handles line jumping using a wait and notify system
+     * Calls the printing function after the given car has successfully left the bridge
+     * @param id id of the car that has crossed
+     */
     public synchronized void crossToNorth(int id){
         while(sCrossing.get(0) != initialCarList.get(id -1)){
             try {
@@ -109,15 +130,44 @@ public class Bridge {
         printState();
     }
 
+    /**
+     * Function called by a Car once it has crossed from north to south
+     * Handles line jumping using a wait and notify system
+     * Calls the printing function after the given car has successfully left the bridge
+     * @param id id of the car that has crossed
+     */
+    public synchronized void crossToSouth(int id){
+        while(nCrossing.get(0) != initialCarList.get(id -1)){
+            try {
+                synchronized (this) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        nCrossing.remove(initialCarList.get(id -1));
+        notifyAll();
+        lastCarCrossedDirection = BridgeDirection.NORTH;
+        printState();
+    }
+
+    /**
+     * Function called by a car once it has reached the north side of the bridge
+     * Goal of the function is to ultimately have the calling car get onto the bridge
+     * Utilizes wait and notify and a while loop lock(not a busy lock) to enforce rules
+     * Handles line jumping and alternating directions for crossing, as well as the 3 car
+     * rule, all in the while loop's condition
+     * Prints the state of the bridge after the car has successfully gone on the bridge
+     * @param id id of the calling car that has reached the north side of the bridge
+     */
     public synchronized void reachedTheNorth(int id){
         Car currCar = initialCarList.get(id -1);
-        if(!nWaiting.contains(currCar))
-            nWaiting.add(currCar);
-        nRealOrder.add(currCar);
-        while(!((nRealOrder.get(0) == currCar  &&
+        nWaiting.add(currCar);
+        while(!((nWaiting.get(0).equals(currCar)   &&
                 (lastCarCrossedDirection == BridgeDirection.SOUTH || sWaiting.isEmpty()))
                 && sCrossing.isEmpty() &&
-                (nCrossing.isEmpty()) || (nCrossing.size() < 3 && sWaiting.isEmpty() && sCrossing.isEmpty()))) {
+                (nCrossing.isEmpty() || (nCrossing.size() < 3 && sWaiting.isEmpty())))) {
             try {
                 synchronized (this) {
                     wait();
@@ -127,20 +177,27 @@ public class Bridge {
             }
         }
         nWaiting.remove(currCar);
-        nRealOrder.remove(currCar);
         nCrossing.add(currCar);
         printState();
+        notifyAll();
     }
 
+    /**
+     * Function called by a car once it has reached the south side of the bridge
+     * Goal of the function is to ultimately have the calling car get onto the bridge
+     * Utilizes wait and notify and a while loop lock(not a busy lock) to enforce rules
+     * Handles line jumping and alternating directions for crossing, as well as the 3 car
+     * rule, all in the while loop's condition
+     * Prints the state of the bridge after the car has successfully gone on the bridge
+     * @param id id of the calling car that has reached the north side of the bridge
+     */
     public synchronized void reachedTheSouth(int id){
         Car currCar = initialCarList.get(id - 1);
-        if(!sWaiting.contains(currCar))
-            sWaiting.add(currCar);
-        sRealOrder.add(currCar);
-        while(!((sRealOrder.get(0) == currCar  &&
+        sWaiting.add(currCar);
+        while(!((sWaiting.get(0).equals(currCar)  &&
                 (lastCarCrossedDirection == BridgeDirection.NORTH || nWaiting.isEmpty()))
                 && nCrossing.isEmpty() &&
-                (sCrossing.isEmpty()) || (sCrossing.size() < 3 && nWaiting.isEmpty() && nCrossing.isEmpty()))){
+                (sCrossing.isEmpty() || (sCrossing.size() < 3 && nWaiting.isEmpty())))){
             try{
                 synchronized (this) {
                     wait();
@@ -150,11 +207,15 @@ public class Bridge {
             }
         }
         sWaiting.remove(currCar);
-        sRealOrder.remove(currCar);
         sCrossing.add(currCar);
         printState();
+        notifyAll();
     }
-    //main function that will run all the simulation parts, monitor the cars, etc.
+
+    /**
+     * Main function that will run all the simulation parts, monitor the cars, etc.
+     * Also handles joining the cars after their execution has been completed
+     */
     public void startRun(){
         for(Car c: initialCarList){
             c.start();
