@@ -9,7 +9,7 @@
 import java.util.Random;
 
 /**
- * Car class
+ * Car class, Threads that will represent Cars that want to cross the bridge
  */
 public class Car extends Thread{
     /**
@@ -22,7 +22,7 @@ public class Car extends Thread{
     /**
      * Creates a new car with the given id and bridge
      * @param carNum unique id for the car
-     * @param myBridge brideg that will monitor this car
+     * @param myBridge bridge that will monitor this car
      */
     public Car(int carNum, Bridge myBridge){
         this.id = carNum;

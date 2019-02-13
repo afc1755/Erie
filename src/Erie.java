@@ -5,6 +5,10 @@
  * Main Class for the Erie program, COPADS project 1
  * February 13, 2019
  */
+
+/**
+ * Erie class, runnable class that mainly performs argument checking
+ */
 public class Erie {
     /**
      * usageMess: string to print if arguments are incorrect, shows proper usage

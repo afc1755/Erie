@@ -19,7 +19,7 @@ enum BridgeDirection{
 }
 
 /**
- * Bridge class
+ * Bridge class, monitor on the Car threads and simulates traffic rules between cars
  */
 public class Bridge {
     /**
