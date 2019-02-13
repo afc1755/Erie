@@ -24,7 +24,7 @@ public class Car extends Thread{
         if(id % 2 == 1){
             myBridge.reachedTheSouth(id);
         }else{
-           myBridge.reachedTheNorth(id);
+            myBridge.reachedTheNorth(id);
         }
         crossBridge();
     }
@@ -40,7 +40,7 @@ public class Car extends Thread{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            myBridge.crossToSouth(id);
+            myBridge.crossToNorth(id);
         }else{
             synchronized (this) {
                 myBridge.setBridgeDirection(BridgeDirection.NORTH);
@@ -50,12 +50,13 @@ public class Car extends Thread{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            myBridge.crossToNorth(id);
+            myBridge.crossToSouth(id);
         }
     }
 
-     @Override
-     public void run(){
+    @Override
+    public void run(){
         startCar();
-     }
+    }
 }
+
