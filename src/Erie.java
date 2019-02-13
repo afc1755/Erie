@@ -21,7 +21,7 @@ public class Erie {
      * @param args input arguments from running the program
      */
     public static void main(String[] args) {
-        if(args.length != 1 || !(args[0].matches("-?\\d+") || Integer.parseInt(args[0]) < 0)){
+        if(args.length != 1 || !(args[0].matches("-?\\d+") || Integer.parseInt(args[0]) < 1)){
             throw new Error(usageMess);
         }else{
             Bridge currBridge = new Bridge(Integer.parseInt(args[0]));
